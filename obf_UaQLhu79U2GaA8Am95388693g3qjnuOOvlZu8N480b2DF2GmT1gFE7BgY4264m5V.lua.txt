@@ -1,0 +1,128 @@
+--[[
+ .____                  ________ ___.    _____                           __                
+ |    |    __ _______   \_____  \\_ |___/ ____\_ __  ______ ____ _____ _/  |_  ___________ 
+ |    |   |  |  \__  \   /   |   \| __ \   __\  |  \/  ___// ___\\__  \\   __\/  _ \_  __ \
+ |    |___|  |  // __ \_/    |    \ \_\ \  | |  |  /\___ \\  \___ / __ \|  | (  <_> )  | \/
+ |_______ \____/(____  /\_______  /___  /__| |____//____  >\___  >____  /__|  \____/|__|   
+         \/          \/         \/    \/                \/     \/     \/                   
+          \_Welcome to LuaObfuscator.com   (Alpha 0.10.8) ~  Much Love, Ferib 
+
+]]--
+
+local Players = game:GetService("Players");
+local RunService = game:GetService("RunService");
+local TweenService = game:GetService("TweenService");
+local Workspace = game:GetService("Workspace");
+local LocalPlayer = Players.LocalPlayer;
+local Prediction = 0.16;
+local CamlockState = false;
+local enemy = nil;
+local function FindNearestEnemy()
+	local closestPlayer, closestDist = nil, math.huge;
+	local center = Vector2.new(Workspace.CurrentCamera.ViewportSize.X / 2, Workspace.CurrentCamera.ViewportSize.Y / 2);
+	for _, player in ipairs(Players:GetPlayers()) do
+		if ((player ~= LocalPlayer) and player.Character and player.Character:FindFirstChild("HumanoidRootPart")) then
+			local position, onScreen = Workspace.CurrentCamera:WorldToViewportPoint(player.Character.HumanoidRootPart.Position);
+			if onScreen then
+				local dist = (center - Vector2.new(position.X, position.Y)).Magnitude;
+				if (dist < closestDist) then
+					closestDist, closestPlayer = dist, player.Character.HumanoidRootPart;
+				end
+			end
+		end
+	end
+	return closestPlayer;
+end
+RunService.Heartbeat:Connect(function()
+	if (CamlockState and enemy) then
+		Workspace.CurrentCamera.CFrame = CFrame.new(Workspace.CurrentCamera.CFrame.p, enemy.Position + (enemy.Velocity * Prediction));
+	end
+end);
+local function createTool()
+	if not LocalPlayer.Backpack:FindFirstChild("SammyX") then
+		local tool = Instance.new("Tool", LocalPlayer.Backpack);
+		tool.Name = "SammyX";
+		tool.RequiresHandle = false;
+		tool.Activated:Connect(function()
+			if CamlockState then
+				enemy = nil;
+				CamlockState = false;
+			else
+				enemy = FindNearestEnemy();
+				CamlockState = enemy ~= nil;
+			end
+		end);
+	end
+end
+local function setupGUI()
+	local ScreenGui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"));
+	local MainFrame = Instance.new("Frame", ScreenGui);
+	MainFrame.Size = UDim2.new(0, 200, 0, 300);
+	MainFrame.Position = UDim2.new(0.7, 0, 0.1, 0);
+	MainFrame.BackgroundColor3 = Color3.new(0, 0, 0);
+	MainFrame.Visible = true;
+	MainFrame.Active = true;
+	MainFrame.Draggable = true;
+	local PredictionLabel = Instance.new("TextLabel", MainFrame);
+	PredictionLabel.Size = UDim2.new(0, 100, 0, 20);
+	PredictionLabel.Position = UDim2.new(0.1, 0, 0.5, 0);
+	PredictionLabel.Text = "Prediction:";
+	PredictionLabel.TextColor3 = Color3.new(1, 1, 1);
+	local PredictionTextBox = Instance.new("TextBox", MainFrame);
+	PredictionTextBox.Size = UDim2.new(0, 80, 0, 20);
+	PredictionTextBox.Position = UDim2.new(0.55, 0, 0.5, 0);
+	PredictionTextBox.Text = tostring(Prediction);
+	local PlayerSpeedLabel = Instance.new("TextLabel", MainFrame);
+	PlayerSpeedLabel.Size = UDim2.new(0, 100, 0, 20);
+	PlayerSpeedLabel.Position = UDim2.new(0.1, 0, 0.3, 0);
+	PlayerSpeedLabel.Text = "Player Speed:";
+	PlayerSpeedLabel.TextColor3 = Color3.new(1, 1, 1);
+	local PlayerSpeedTextBox = Instance.new("TextBox", MainFrame);
+	PlayerSpeedTextBox.Size = UDim2.new(0, 80, 0, 20);
+	PlayerSpeedTextBox.Position = UDim2.new(0.55, 0, 0.3, 0);
+	PlayerSpeedTextBox.Text = tostring((LocalPlayer.Character and LocalPlayer.Character.Humanoid.WalkSpeed) or 16);
+	local AutoPredictionButton = Instance.new("TextButton", MainFrame);
+	AutoPredictionButton.Size = UDim2.new(0, 160, 0, 40);
+	AutoPredictionButton.Position = UDim2.new(0.1, 0, 0.7, 0);
+	AutoPredictionButton.Text = "Auto Prediction: Off";
+	local OpenCloseButton = Instance.new("TextButton", ScreenGui);
+	OpenCloseButton.Size = UDim2.new(0, 40, 0, 40);
+	OpenCloseButton.Position = UDim2.new(1, -50, 0.1, 0);
+	OpenCloseButton.Text = "-";
+	local SpinningText = Instance.new("TextLabel", MainFrame);
+	SpinningText.Position = UDim2.new(0.1, 0, 0.1, 0);
+	SpinningText.Size = UDim2.new(0, 160, 0, 40);
+	SpinningText.Text = "Aura Sammy";
+	SpinningText.TextColor3 = Color3.new(1, 1, 1);
+	local tween = TweenService:Create(SpinningText, TweenInfo.new(3, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), {Rotation=360});
+	tween:Play();
+	OpenCloseButton.MouseButton1Click:Connect(function()
+		MainFrame.Visible = not MainFrame.Visible;
+		OpenCloseButton.Text = (MainFrame.Visible and "-") or "+";
+	end);
+	PredictionTextBox.FocusLost:Connect(function(enterPressed)
+		if enterPressed then
+			Prediction = tonumber(PredictionTextBox.Text) or Prediction;
+			PredictionTextBox.Text = tostring(Prediction);
+		end
+	end);
+	PlayerSpeedTextBox.FocusLost:Connect(function(enterPressed)
+		if (enterPressed and LocalPlayer.Character) then
+			LocalPlayer.Character.Humanoid.WalkSpeed = tonumber(PlayerSpeedTextBox.Text) or LocalPlayer.Character.Humanoid.WalkSpeed;
+		end
+	end);
+	AutoPredictionButton.MouseButton1Click:Connect(function()
+		local autoEnabled = AutoPredictionButton.Text == "Auto Prediction: Off";
+		AutoPredictionButton.Text = (autoEnabled and "Auto Prediction: On") or "Auto Prediction: Off";
+	end);
+end
+local function onCharacterAdded(character)
+	createTool();
+	setupGUI();
+end
+LocalPlayer.CharacterAdded:Connect(onCharacterAdded);
+if LocalPlayer.Character then
+	onCharacterAdded(LocalPlayer.Character);
+else
+	LocalPlayer.CharacterAdded:Wait();
+end
